@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PrediX</title>
+    <style>
+        /* General Styles */
+        body {
+            font-family: 'Roboto', sans-serif;
+            background: linear-gradient(135deg, #2c3e50, #34495e);
+            color: #ecf0f1;
+            margin: 0;
+            padding: 0;
+            text-align: center;
+        }
+
+        /* Main Container */
+        #mainApp {
+            max-width: 800px;
+            margin: 50px auto;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.25);
+            animation: fadeInUp 1s ease-in-out;
+        }
+
+        @keyframes fadeInUp {
+            0% { opacity: 0; transform: translateY(20px); }
+            100% { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Title */
+        h1 {
+            font-size: 36px;
+            color: #e74c3c;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            font-weight: 600;
+            margin-bottom: 30px;
+            animation: fadeIn 1.5s ease-in-out;
+        }
+
+        /* Fade-In Animation */
+        @keyframes fadeIn {
+            0% { opacity: 0; }
+            100% { opacity: 1; }
+        }
+
+        /* Card Styles */
+        .card {
+            background: #1c2833;
+            padding: 25px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            text-align: left;
+            transition: transform 0.3s ease-in-out;
+        }
+
+        .card:hover {
+            transform: scale(1.05);
+        }
+
+        /* Section Headings */
+        .card h2 {
+            font-size: 24px;
+            color: #f39c12;
+            margin-bottom: 15px;
+            font-weight: 600;
+        }
+
+        /* Statistics */
+        .stat {
+            display: flex;
+            justify-content: space-between;
+            font-size: 18px;
+            font-weight: bold;
+            padding: 15px;
+            background: #16a085;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            transition: background 0.3s ease;
+        }
+
+        .stat:hover {
+            background: #1abc9c;
+        }
+
+        /* History Table */
+        .history-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 30px;
+            text-align: center;
+            max-height: 300px; /* Set max height */
+            overflow-y: auto;  /* Allow scrolling if the content exceeds the height */
+            display: block;    /* To enable scrolling */
+        }
+
+        .history-table th, .history-table td {
+            padding: 12px;
+            font-size: 16px;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .history-table th {
+            background: #e74c3c;
+            color: #fff;
+            text-transform: uppercase;
+            font-weight: bold;
+        }
+
+        .history-table tr:hover {
+            background: #34495e;
+            transition: background 0.3s ease-in-out;
+        }
+
+        /* Status Colors */
+        .win {
+            color: #2ecc71;
+            font-weight: bold;
+        }
+
+        .loss {
+            color: #e74c3c;
+            font-weight: bold;
+        }
+
+        .pending {
+            color: #f39c12;
+            font-weight: bold;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            body {
+                padding: 20px;
+            }
+
+            #mainApp {
+                padding: 25px;
+                margin: 20px;
+            }
+
+            h1 {
+                font-size: 32px;
+            }
+
+            .card h2 {
+                font-size: 20px;
+            }
+
+            .stat {
+                font-size: 16px;
+                padding: 12px;
+            }
+
+            .history-table th, .history-table td {
+                font-size: 14px;
+                padding: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="mainApp">
+        <h1>PrediX</h1>
+
+        <div class="card">
+            <h2>📅 Period: <span id="currentPeriod">-</span></h2>
+            <h2>📊 Result: <span id="currentResult">-</span></h2>
+        </div>
+
+        <div class="card">
+            <h2>Analysis</h2>
+            <div class="stat">
+                <span>Win Count</span>
+                <span id="totalWins">0</span>
+            </div>
+            <div class="stat">
+                <span>Loss Count</span>
+                <span id="totalLosses">0</span>
+            </div>
+            <div class="stat">
+                <span>Win %</span>
+                <span id="accuracy">0%</span>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>History</h2>
+            <table class="history-table">
+                <thead>
+                    <tr>
+                        <th>Period</th>
+                        <th>Prediction</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody id="historyTable">
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        let historyData = [];
+        let totalWins = 0;
+        let totalLosses = 0;
+        let lastFetchedPeriod = null;
+        let lastPredictionPeriod = null; // Store the period when the last prediction was made
+        let lastPrediction = null; // Store the last prediction
+
+        // Function to fetch game result
+        async function fetchGameResult() {
+            try {
+                let response = await fetch("https://api.bdg88zf.com/api/webapi/GetNoaverageEmerdList", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        pageSize: 10,
+                        pageNo: 1,
+                        typeId: 1,
+                        language: 0,
+                        random: "4a0522c6ecd8410496260e686be2a57c",
+                        signature: "334B5E70A0C9B8918B0B15E517E2069C",
+                        timestamp: Math.floor(Date.now() / 1000)
+                    })
+                });
+
+                if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+
+                let data = await response.json();
+                let latestResult = data?.data?.list?.[0];
+                if (latestResult) {
+                    return { period: latestResult.issueNumber, result: latestResult.number };
+                } else {
+                    throw new Error("No data found in API response");
+                }
+            } catch (error) {
+                console.error("Error fetching game result:", error);
+                return null;
+            }
+        }
+
+        // Function to analyze previous results and improve predictions
+        function analyzePatterns() {
+            let prediction = "RED";  // Default prediction (could be more sophisticated)
+            let recentResults = historyData.slice(0, 5);  // Take last 5 results for pattern analysis
+
+            // Simple analysis: if most recent results are GREEN, predict GREEN; else RED
+            let greenCount = recentResults.filter(item => item.result >= 5).length;
+            if (greenCount > recentResults.length / 2) {
+                prediction = "GREEN";
+            } else {
+                prediction = "RED";
+            }
+
+            return prediction;
+        }
+
+        // Function to update prediction based on pattern analysis
+        async function updatePrediction() {
+            let apiResult = await fetchGameResult();
+            if (apiResult && apiResult.period !== lastFetchedPeriod) {
+                lastFetchedPeriod = apiResult.period;
+
+                // Only update prediction if it's a new period or if we haven't made a prediction for the current period yet
+                if (apiResult.period !== lastPredictionPeriod) {
+                    lastPredictionPeriod = apiResult.period;
+                    lastPrediction = analyzePatterns(); // Use pattern analysis for prediction
+                }
+
+                let currentPeriod = (BigInt(apiResult.period) + 1n).toString();
+
+                document.getElementById("currentPeriod").innerText = currentPeriod;
+                document.getElementById("currentResult").innerText = lastPrediction;
+
+                // Save both prediction and result
+                historyData.unshift({ period: currentPeriod, prediction: lastPrediction, result: apiResult.result, status: "Pending" });
+                updateHistory();
+                checkWinLoss(apiResult);
+            }
+        }
+
+        // Function to check win/loss
+        function checkWinLoss(apiResult) {
+            if (!apiResult) return;
+
+            // Convert the actual result to "RED" or "GREEN"
+            let actualResult = (apiResult.result % 2 === 0) ? "RED" : "GREEN"; // Even -> RED, Odd -> GREEN
+
+            // Check if the prediction matches the actual result
+            historyData.forEach(item => {
+                if (item.period === apiResult.period) {
+                    item.status = (item.prediction === actualResult) ? "WIN" : "LOSS";
+                }
+            });
+
+            updateStats();
+            updateHistory();
+        }
+
+        // Function to update stats
+        function updateStats() {
+            totalWins = historyData.filter(item => item.status === "WIN").length;
+            totalLosses = historyData.filter(item => item.status === "LOSS").length;
+
+            let accuracy = totalWins / (totalWins + totalLosses) * 100 || 0;
+            document.getElementById("totalWins").innerText = totalWins;
+            document.getElementById("totalLosses").innerText = totalLosses;
+            document.getElementById("accuracy").innerText = accuracy.toFixed(2) + '%';
+        }
+
+        // Function to update history table
+        function updateHistory() {
+            let historyTable = document.getElementById("historyTable");
+            historyTable.innerHTML = "";
+            historyData.forEach(item => {
+                let statusClass = item.status === "WIN" ? "win" : (item.status === "LOSS" ? "loss" : "pending");
+                historyTable.innerHTML += `
+                    <tr>
+                        <td>${item.period}</td>
+                        <td>${item.prediction}</td>
+                        <td class="${statusClass}">${item.status}</td>
+                    </tr>
+                `;
+            });
+        }
+
+        // Update every second
+        setInterval(updatePrediction, 1000);
+    </script>
+</body>
+</html>
